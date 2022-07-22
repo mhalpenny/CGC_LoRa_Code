@@ -12,6 +12,7 @@
 #include <RadioHead.h>
 #include <RH_RF95.h>
 #include <DFRobot_DHT11.h>
+#include <RTCZero.h>
 
 int count = 0;
 uint8_t temperature; // test init to 10, uint8_t insure 8 bits length (i.e. unsigned char)
@@ -23,6 +24,16 @@ RH_RF95 rf95(A2, 9); //SPI CS init with MoteinoM0
 //#define Serial SerialUSB
 DFRobot_DHT11 DHT;
 #define DHT11_PIN A1
+
+// instance of the RTC driver
+RTCZero zerortc;
+// Set how often alarm goes off here
+const byte alarmSeconds = 0;
+const byte alarmMinutes = 15;
+const byte alarmHours = 0;
+
+// alarm flag to know if awake or not
+volatile bool alarmFlag = false; // Start awake
 
 void setup() 
 {
@@ -44,10 +55,56 @@ void setup()
   // If you are using RFM95/96/97/98 modules which uses the PA_BOOST transmitter pin, then 
   // you can set transmitter powers from 2 to 20 dBm:
    rf95.setTxPower(13, false);
+
+   // put radio to sleep
+  Serial.println("LoRa going to sleep");
+  rf95.sleep();
+
+  // Set up clocks and such
+  Serial.println("clock init");
+  zerortc.begin();
+
+  resetAlarm();  // Set alarm
+  Serial.println("timer is set");
+  zerortc.attachInterrupt(alarmMatch); // Set up a handler for the alarm
 }
 
 void loop()
 {
+    if (alarmFlag == true) {
+    alarmFlag = false;  // Clear flag
+    digitalWrite(LED_BUILTIN, HIGH);
+    Serial.println("Alarm went off - I'm awake!");
+    Serial.println("Sending LoRa to pi_gateway");
+    
+    transmission();
+    delay(1000);
+  }
+  resetAlarm();  // Reset alarm before returning to sleep
+  Serial.println("Alarm reset, going to sleep now.");
+  zerortc.standbyMode();    // Sleep until next alarm match
+}
+
+void alarmMatch(void) {
+  alarmFlag = true; // Set flag
+}
+
+void resetAlarm(void) {
+  byte seconds = 0;
+  byte minutes = 15;
+  byte hours = 0;
+  byte day = 0;
+  byte month = 0;
+  byte year = 0;
+  
+  zerortc.setTime(hours, minutes, seconds);
+  zerortc.setDate(day, month, year);
+
+  zerortc.setAlarmTime(alarmHours, alarmMinutes, alarmSeconds);
+  zerortc.enableAlarm(zerortc.MATCH_HHMMSS);
+}
+
+void transmission(){
   Serial.println(count);
   Serial.println("Preparing to send to rf95_server");
   //compiling sensor data
@@ -70,29 +127,31 @@ void loop()
     Serial.println("Message sent");
   rf95.waitPacketSent();
   count++;
-  delay(5000);
+//  delay(5000);
+} 
+
+void reply(){
 //  // Now wait for a reply
- uint8_t buf[RH_RF95_MAX_MESSAGE_LEN];
- uint8_t len = sizeof(buf);
+// uint8_t buf[RH_RF95_MAX_MESSAGE_LEN];
+// uint8_t len = sizeof(buf);
 //
- if (rf95.waitAvailableTimeout(5000))
- { 
-   // Should be a reply message for us now   
-   if (rf95.recv(buf, &len))
-  {
-     Serial.print("got reply: ");
-     Serial.println((char*)buf);
-//      Serial.print("RSSI: ");
-//      Serial.println(rf95.lastRssi(), DEC);    
-   }
-   else
-   {
-     Serial.println("recv failed");
-   }
- }
- else
- {
-   Serial.println("No reply, is rf95_server running?");
- }
- delay(400);
+// if (rf95.waitAvailableTimeout(5000))
+// { 
+//   // Should be a reply message for us now   
+//   if (rf95.recv(buf, &len))
+//  {
+//     Serial.print("got reply: ");
+//     Serial.println((char*)buf);
+////      Serial.print("RSSI: ");
+////      Serial.println(rf95.lastRssi(), DEC);    
+//   }
+//   else
+//   {
+//     Serial.println("recv failed");
+//   }
+// }
+// else
+// {
+//   Serial.println("No reply, is rf95_server running?");
+// }
 }

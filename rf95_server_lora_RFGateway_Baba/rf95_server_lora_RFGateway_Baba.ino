@@ -12,8 +12,11 @@
 
 // Singleton instance of the radio driver
 RH_RF95 rf95(20, 18); //RFGateway
+int led = D37_LED;
 
-void setup() {   
+void setup() {  
+  pinMode(led, OUTPUT);
+  digitalWrite(led, LOW);      
   Serial.begin((115200));
   Serial.println("Connecting..."); 
   while (!Serial) ; // Wait for serial port to be available
@@ -51,6 +54,10 @@ void loop(){
       Serial.println(buf[0]); //[Baba]
       Serial.print("temperature: "); //[Baba]
       Serial.println(buf[1]); //[Baba]
+        digitalWrite(led, HIGH);
+        digitalWrite(led, LOW);
+        digitalWrite(led, HIGH);
+        digitalWrite(led, LOW);
 
     //  Serial.print("RSSI: ");
     //  Serial.println(rf95.lastRssi(), DEC);
