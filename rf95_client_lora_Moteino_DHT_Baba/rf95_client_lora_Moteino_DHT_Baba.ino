@@ -91,7 +91,7 @@ void alarmMatch(void) {
 
 void resetAlarm(void) {
   byte seconds = 0;
-  byte minutes = 15;
+  byte minutes = 0;
   byte hours = 0;
   byte day = 0;
   byte month = 0;
